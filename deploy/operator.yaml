@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sporos
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: sporos
+  template:
+    metadata:
+      labels:
+        name: sporos
+    spec:
+      containers:
+        - name: sporos
+          image: REPLACE_IMAGE
+          ports:
+          - containerPort: 60000
+            name: metrics
+          command:
+          - sporos
+          imagePullPolicy: Always
+          env:
+            - name: WATCH_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: OPERATOR_NAME
+              value: "sporos"
