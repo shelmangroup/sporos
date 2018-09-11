@@ -15,7 +15,7 @@ func Reconcile(cr *api.Sporos) (err error) {
 	cr = cr.DeepCopy()
 
 	// After first time reconcile, phase will switch to "Running".
-	if cr.Status.Phase == api.ClusterPhaseInitial {
+	if cr.Status.Phase == api.ControlplanePhaseInitial {
 		err = prepareAssets(cr)
 		if err != nil {
 			return err

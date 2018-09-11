@@ -5,11 +5,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type ClusterPhase string
+type ControlplanePhase string
 
 const (
-	ClusterPhaseInitial ClusterPhase = ""
-	ClusterPhaseRunning              = "Running"
+	ControlplanePhaseInitial ControlplanePhase = ""
+	ControlplanePhaseRunning                   = "Running"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -44,6 +44,6 @@ type SporosSpec struct {
 }
 
 type SporosStatus struct {
-	Phase ClusterPhase `json:"phase"`
-	Nodes []string     `json:"nodes"`
+	Phase ControlplanePhase `json:"phase"`
+	Nodes []string          `json:"nodes"`
 }
