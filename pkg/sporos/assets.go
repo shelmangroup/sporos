@@ -10,6 +10,7 @@ import (
 	"github.com/kubernetes-incubator/bootkube/pkg/tlsutil"
 	api "github.com/shelmangroup/sporos/pkg/apis/sporos/v1alpha1"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 )
 
@@ -37,9 +38,15 @@ func prepareAssets(cr *api.Sporos) error {
 	}
 	for _, a := range assets {
 		if strings.HasPrefix(a.Name, "manifests") {
-			obj, groupVersionKind, err := decode(a.Data, nil, nil)
+			obj, _, err := decode(a.Data, nil, nil)
 			if err != nil {
 				return fmt.Sprintf("Error while decoding YAML object. Err was: %s", err)
+			}
+			switch o := obj.(type) {
+			case *corev1.Secret:
+				fmt.Println(o.Data)
+			default:
+				continue
 			}
 		}
 	}
