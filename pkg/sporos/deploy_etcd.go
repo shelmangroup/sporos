@@ -3,10 +3,9 @@ package sporos
 import (
 	"fmt"
 
+	eopapi "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	api "github.com/shelmangroup/sporos/pkg/apis/sporos/v1alpha1"
-
-	eopapi "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2"
 	"k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,8 +32,8 @@ func deployEtcdCluster(cr *api.Sporos) (*eopapi.EtcdCluster, error) {
 			TLS: &eopapi.TLSPolicy{
 				Static: &eopapi.StaticTLS{
 					Member: &eopapi.MemberSecret{
-						PeerSecret:   etcdPeerTLSSecretName(cr.Name),
-						ServerSecret: etcdServerTLSSecretName(cr.Name),
+						PeerSecret:   EtcdPeerTLSSecretName(cr.Name),
+						ServerSecret: EtcdServerTLSSecretName(cr.Name),
 					},
 					OperatorSecret: EtcdClientTLSSecretName(cr.Name),
 				},
@@ -70,13 +69,13 @@ func EtcdClientTLSSecretName(name string) string {
 	return name + "-etcd-client-tls"
 }
 
-// etcdServerTLSSecretName returns the name of etcd server TLS secret for the given sporos name
-func etcdServerTLSSecretName(name string) string {
+// EtcdServerTLSSecretName returns the name of etcd server TLS secret for the given sporos name
+func EtcdServerTLSSecretName(name string) string {
 	return name + "-etcd-server-tls"
 }
 
-// etcdPeerTLSSecretName returns the name of etcd peer TLS secret for the given sporos name
-func etcdPeerTLSSecretName(name string) string {
+// EtcdPeerTLSSecretName returns the name of etcd peer TLS secret for the given sporos name
+func EtcdPeerTLSSecretName(name string) string {
 	return name + "-etcd-peer-tls"
 }
 
