@@ -1,6 +1,7 @@
 package v1alpha1
 
 import (
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -19,8 +20,12 @@ type SporosList struct {
 	Items           []Sporos `json:"items"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+type PodPolicy struct {
+	// Resources is the resource requirements for the containers.
+	Resources v1.ResourceRequirements `json:"resources,omitempty"`
+}
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type Sporos struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata"`
@@ -33,6 +38,9 @@ type SporosSpec struct {
 	ApiServerIP  string `json:"apiServerIP"`
 	PodCIDR      string `json:"podCIDR"`
 	ServiceCIDR  string `json:"serviceCIDR"`
+	// Pod defines the policy for pods owned by sporos operator.
+	// This field cannot be updated once the CR is created.
+	Pod *PodPolicy `json:"pod,omitempty"`
 }
 
 type SporosStatus struct {

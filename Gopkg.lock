@@ -34,6 +34,14 @@
   revision = "3a771d992973f24aa725d07868b467d1ddfceafb"
 
 [[projects]]
+  digest = "1:c2537873de13c738fb01b86a1615b2053336fd430978b5cea86f8fc4ffc02e10"
+  name = "github.com/coreos/etcd-operator"
+  packages = ["pkg/apis/etcd/v1beta2"]
+  pruneopts = "NUT"
+  revision = "a0032c1f9a708d2164f3f03109ece06c5439df80"
+  version = "v0.9.2"
+
+[[projects]]
   digest = "1:ffe9824d294da03b391f44e1ae8281281b4afc1bdaa9588c9097785e3af10cec"
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
@@ -651,6 +659,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2",
     "github.com/kubernetes-incubator/bootkube/pkg/asset",
     "github.com/kubernetes-incubator/bootkube/pkg/tlsutil",
     "github.com/operator-framework/operator-sdk/pkg/sdk",
