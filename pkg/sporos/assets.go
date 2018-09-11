@@ -40,7 +40,7 @@ func prepareAssets(cr *api.Sporos) error {
 		if strings.HasPrefix(a.Name, "manifests") {
 			obj, _, err := decode(a.Data, nil, nil)
 			if err != nil {
-				return fmt.Sprintf("Error while decoding YAML object. Err was: %s", err)
+				return fmt.Errorf("Error while decoding YAML object. Err was: %s", err)
 			}
 			switch o := obj.(type) {
 			case *corev1.Secret:
