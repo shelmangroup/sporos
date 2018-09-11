@@ -1,15 +1,21 @@
 package sporos
 
 import (
+	"fmt"
 	"net"
 	"net/url"
+	"strings"
 
 	"github.com/kubernetes-incubator/bootkube/pkg/asset"
 	"github.com/kubernetes-incubator/bootkube/pkg/tlsutil"
 	api "github.com/shelmangroup/sporos/pkg/apis/sporos/v1alpha1"
+
+	"k8s.io/client-go/kubernetes/scheme"
 )
 
 func prepareAssets(cr *api.Sporos) error {
+	decode := scheme.Codecs.UniversalDeserializer().Decode
+
 	apiserver, _ := url.Parse(cr.Spec.ApiServerUrl)
 	_, podCIDR, _ := net.ParseCIDR(cr.Spec.PodCIDR)
 	_, svcCIDR, _ := net.ParseCIDR(cr.Spec.ServiceCIDR)
@@ -25,9 +31,17 @@ func prepareAssets(cr *api.Sporos) error {
 		DNSServiceIP: net.ParseIP(cr.Spec.ApiServerIP),
 		Images:       asset.DefaultImages,
 	}
-	_, err := asset.NewDefaultAssets(conf)
+	assets, err := asset.NewDefaultAssets(conf)
 	if err != nil {
 		return err
+	}
+	for _, a := range assets {
+		if strings.HasPrefix(a.Name, "manifests") {
+			obj, groupVersionKind, err := decode(a.Data, nil, nil)
+			if err != nil {
+				return fmt.Sprintf("Error while decoding YAML object. Err was: %s", err)
+			}
+		}
 	}
 	return nil
 }
