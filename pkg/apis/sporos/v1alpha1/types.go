@@ -4,6 +4,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type ClusterPhase string
+
+const (
+	ClusterPhaseInitial ClusterPhase = ""
+	ClusterPhaseRunning              = "Running"
+)
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 type SporosList struct {
@@ -22,8 +29,13 @@ type Sporos struct {
 }
 
 type SporosSpec struct {
-	// Fill me
+	ApiServerUrl string `json:"apiServerURL"`
+	ApiServerIP  string `json:"apiServerIP"`
+	PodCIDR      string `json:"podCIDR"`
+	ServiceCIDR  string `json:"serviceCIDR"`
 }
+
 type SporosStatus struct {
-	// Fill me
+	Phase ClusterPhase `json:"phase"`
+	Nodes []string     `json:"nodes"`
 }

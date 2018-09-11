@@ -58,7 +58,6 @@
   packages = ["."]
   pruneopts = "NUT"
   revision = "0ca9ea5df5451ffdf184b4428c902747c2c11cd7"
-  version = "v1.0.0"
 
 [[projects]]
   digest = "1:260f7ebefc63024c8dfe2c9f1a2935a89fa4213637a1f522f592f80c001cc441"
@@ -181,6 +180,18 @@
   version = "v1.1.5"
 
 [[projects]]
+  digest = "1:54e51626772439047e591c12c02196096d821ffad328a375f0c2e882f9f97336"
+  name = "github.com/kubernetes-incubator/bootkube"
+  packages = [
+    "pkg/asset",
+    "pkg/asset/internal",
+    "pkg/tlsutil",
+  ]
+  pruneopts = "NUT"
+  revision = "6618198f5e416cf60c10e77585ba4368e9438cd8"
+  version = "v0.13.0"
+
+[[projects]]
   branch = "master"
   digest = "1:84a5a2b67486d5d67060ac393aa255d05d24ed5ee41daecd5635ec22657b6492"
   name = "github.com/mailru/easyjson"
@@ -229,6 +240,13 @@
   ]
   pruneopts = "NUT"
   revision = "384f13c13b9bfbbf4e9b3f8f49aba592cdcbe439"
+
+[[projects]]
+  digest = "1:9072181164e616e422cbfbe48ca9ac249a4d76301ca0876c9f56b937cf214a2f"
+  name = "github.com/pborman/uuid"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "ca53cad383cad2479bbba7f7a1a05797ec1386e4"
 
 [[projects]]
   digest = "1:03bca087b180bf24c4f9060775f137775550a0834e18f0bca0520a868679dbd7"
@@ -633,6 +651,8 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/kubernetes-incubator/bootkube/pkg/asset",
+    "github.com/kubernetes-incubator/bootkube/pkg/tlsutil",
     "github.com/operator-framework/operator-sdk/pkg/sdk",
     "github.com/operator-framework/operator-sdk/pkg/util/k8sutil",
     "github.com/operator-framework/operator-sdk/version",
