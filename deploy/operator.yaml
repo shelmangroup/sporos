@@ -12,9 +12,10 @@ spec:
       labels:
         name: sporos
     spec:
+      serviceAccountName: default-account-sporos
       containers:
         - name: sporos
-          image: REPLACE_IMAGE
+          image: shelmangroup/sporos:latest
           ports:
           - containerPort: 60000
             name: metrics

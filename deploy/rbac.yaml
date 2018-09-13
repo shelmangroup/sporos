@@ -4,6 +4,14 @@ metadata:
   name: sporos
 rules:
 - apiGroups:
+  - etcd.database.coreos.com
+  resources:
+  - etcdclusters
+  - etcdbackups
+  - etcdrestores
+  verbs:
+  - "*"
+- apiGroups:
   - sporos.shelman.io
   resources:
   - "*"
@@ -25,9 +33,6 @@ rules:
   - apps
   resources:
   - deployments
-  - daemonsets
-  - replicasets
-  - statefulsets
   verbs:
   - "*"
 
