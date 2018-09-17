@@ -1,6 +1,7 @@
 package sporos
 
 import (
+	"fmt"
 	"net"
 	"net/url"
 
@@ -12,21 +13,39 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	// "k8s.io/client-go/kubernetes/scheme"
+	// "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/scheme"
 )
 
 func prepareAssets(cr *api.Sporos) error {
 	// decode := scheme.Codecs.UniversalDeserializer().Decode
 
-	apiserver, _ := url.Parse(cr.Spec.ApiServerUrl)
-	_, podCIDR, _ := net.ParseCIDR(cr.Spec.PodCIDR)
-	_, svcCIDR, _ := net.ParseCIDR(cr.Spec.ServiceCIDR)
+	apiserver, err := url.Parse(cr.Spec.ApiServerUrl)
+	if err != nil {
+		return err
+	}
+	_, podCIDR, err := net.ParseCIDR(cr.Spec.PodCIDR)
+	if err != nil {
+		return err
+	}
+	_, svcCIDR, err := net.ParseCIDR(cr.Spec.ServiceCIDR)
+	if err != nil {
+		return err
+	}
 
 	conf := asset.Config{
-		EtcdServers:  []*url.URL{apiserver},
-		EtcdUseTLS:   true,
-		APIServers:   []*url.URL{apiserver},
-		AltNames:     &tlsutil.AltNames{},
+		EtcdServers: []*url.URL{apiserver},
+		EtcdUseTLS:  true,
+		APIServers:  []*url.URL{apiserver},
+		AltNames: &tlsutil.AltNames{
+			DNSNames: []string{
+				"localhost",
+				fmt.Sprintf("*.%s.svc.cluster.local", cr.Namespace),
+			},
+			IPs: []net.IP{
+				net.ParseIP("127.0.0.1"),
+			},
+		},
 		PodCIDR:      podCIDR,
 		ServiceCIDR:  svcCIDR,
 		APIServiceIP: net.ParseIP(cr.Spec.ApiServerIP),
@@ -39,6 +58,10 @@ func prepareAssets(cr *api.Sporos) error {
 	}
 
 	err = createEtcdTLSsecrets(cr, assets)
+	if err != nil {
+		return err
+	}
+	err = createControlplaneSecrets(cr, assets)
 	if err != nil {
 		return err
 	}
@@ -125,4 +148,72 @@ func createEtcdTLSsecrets(cr *api.Sporos, a asset.Assets) error {
 	}
 
 	return nil
+}
+
+func createControlplaneSecrets(cr *api.Sporos, a asset.Assets) error {
+	kubeApiserverSecret, _ := a.Get(asset.AssetPathAPIServerSecret)
+	apiSecret, err := decodeSecretManifest(kubeApiserverSecret.Data)
+	if err != nil {
+		return err
+	}
+	apiSecret.ObjectMeta.Namespace = cr.Namespace
+	apiSecret.ObjectMeta.Name = fmt.Sprintf("%s-kube-apiserver", cr.Name)
+	apiSecret.ObjectMeta.Labels = LabelsForSporos(cr.Name)
+
+	addOwnerRefToObject(apiSecret, asOwner(cr))
+	err = sdk.Create(apiSecret)
+	if err != nil && !apierrors.IsAlreadyExists(err) {
+		return err
+	}
+
+	kubeControllerSecret, _ := a.Get(asset.AssetPathControllerManagerSecret)
+	controllerSecret, err := decodeSecretManifest(kubeControllerSecret.Data)
+	if err != nil {
+		return err
+	}
+	controllerSecret.ObjectMeta.Namespace = cr.Namespace
+	controllerSecret.ObjectMeta.Name = fmt.Sprintf("%s-kube-controller-manager", cr.Name)
+	controllerSecret.ObjectMeta.Labels = LabelsForSporos(cr.Name)
+
+	addOwnerRefToObject(controllerSecret, asOwner(cr))
+	err = sdk.Create(controllerSecret)
+	if err != nil && !apierrors.IsAlreadyExists(err) {
+		return err
+	}
+	adminKubeconfig, _ := a.Get(asset.AssetPathAdminKubeConfig)
+	adminSecret := &corev1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Secret",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-admin-kubeconfig", cr.Name),
+			Namespace: cr.Namespace,
+			Labels:    LabelsForSporos(cr.Name),
+		},
+		Data: map[string][]byte{
+			"kubeconfig": adminKubeconfig.Data,
+		},
+	}
+	addOwnerRefToObject(adminSecret, asOwner(cr))
+	err = sdk.Create(adminSecret)
+	if err != nil && !apierrors.IsAlreadyExists(err) {
+		return err
+	}
+	return nil
+}
+
+func decodeSecretManifest(b []byte) (*corev1.Secret, error) {
+	obj, _, err := scheme.Codecs.UniversalDeserializer().Decode(b, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	var s *corev1.Secret
+	switch o := obj.(type) {
+	case *corev1.Secret:
+		s = o
+	default:
+		return nil, fmt.Errorf("No secret")
+	}
+	return s, nil
 }

@@ -16,6 +16,7 @@ spec:
       containers:
         - name: sporos
           image: shelmangroup/sporos:latest
+          imagePullPolicy: Always
           ports:
           - containerPort: 60000
             name: metrics
