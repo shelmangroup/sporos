@@ -3,7 +3,5 @@ kind: "Sporos"
 metadata:
   name: "helloworld"
 spec:
-  apiServerURL: "https://localhost:9433"
-  apiServerIP: "1.1.1.1"
   podCIDR: "1.2.3.0/24"
   serviceCIDR: "1.2.4.0/24"

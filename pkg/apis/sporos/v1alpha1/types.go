@@ -34,16 +34,15 @@ type Sporos struct {
 }
 
 type SporosSpec struct {
-	ApiServerUrl string `json:"apiServerURL"`
-	ApiServerIP  string `json:"apiServerIP"`
-	PodCIDR      string `json:"podCIDR"`
-	ServiceCIDR  string `json:"serviceCIDR"`
+	PodCIDR     string `json:"podCIDR"`
+	ServiceCIDR string `json:"serviceCIDR"`
 	// Pod defines the policy for pods owned by sporos operator.
 	// This field cannot be updated once the CR is created.
 	Pod *PodPolicy `json:"pod,omitempty"`
 }
 
 type SporosStatus struct {
-	Phase ControlplanePhase `json:"phase"`
-	Nodes []string          `json:"nodes"`
+	Phase       ControlplanePhase `json:"phase"`
+	Nodes       []string          `json:"nodes"`
+	ApiServerIP string            `json:"apiserverip"`
 }

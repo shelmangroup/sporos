@@ -2,6 +2,7 @@ package sporos
 
 import (
 	"fmt"
+	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	api "github.com/shelmangroup/sporos/pkg/apis/sporos/v1alpha1"
 	log "github.com/sirupsen/logrus"
 )
@@ -11,10 +12,25 @@ func Reconcile(cr *api.Sporos) (err error) {
 
 	// After first time reconcile, phase will switch to "Running".
 	if cr.Status.Phase == api.ControlplanePhaseInitial {
-		err = prepareAssets(cr)
-		if err != nil {
-			return err
+		if cr.Status.ApiServerIP == "" {
+			svc, err := createExternalEndpoint(cr)
+			if err != nil {
+				return err
+			}
+			svcReady, err := isServiceEndpointReady(cr, svc)
+			if err != nil {
+				return fmt.Errorf("failed to check if etcd cluster is ready: %v", err)
+			}
+			if !svcReady {
+				log.Infof("Waiting for External Endpoint (%v) to become ready", svc.Name)
+				return nil
+			}
+			err = prepareAssets(cr)
+			if err != nil {
+				return err
+			}
 		}
+
 		// etcd cluster should only be created in first time reconcile.
 		ec, err := deployEtcdCluster(cr)
 		if err != nil {
@@ -31,6 +47,8 @@ func Reconcile(cr *api.Sporos) (err error) {
 			log.Infof("Waiting for EtcdCluster (%v) to become ready", ec.Name)
 			return nil
 		}
+		cr.Status.Phase = "Running"
+		sdk.Update(cr)
 	}
 
 	return nil

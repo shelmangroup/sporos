@@ -8,6 +8,7 @@ import (
 	"github.com/kubernetes-incubator/bootkube/pkg/asset"
 	"github.com/kubernetes-incubator/bootkube/pkg/tlsutil"
 	api "github.com/shelmangroup/sporos/pkg/apis/sporos/v1alpha1"
+	// log "github.com/sirupsen/logrus"
 
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	corev1 "k8s.io/api/core/v1"
@@ -18,12 +19,17 @@ import (
 )
 
 func prepareAssets(cr *api.Sporos) error {
-	// decode := scheme.Codecs.UniversalDeserializer().Decode
-
-	apiserver, err := url.Parse(cr.Spec.ApiServerUrl)
+	apiServerUrl := fmt.Sprintf("https://%s:9443", cr.Status.ApiServerIP)
+	apiserver, err := url.Parse(apiServerUrl)
 	if err != nil {
 		return err
 	}
+
+	etcdSrvs, err := etcdServers(cr)
+	if err != nil {
+		return err
+	}
+
 	_, podCIDR, err := net.ParseCIDR(cr.Spec.PodCIDR)
 	if err != nil {
 		return err
@@ -34,12 +40,13 @@ func prepareAssets(cr *api.Sporos) error {
 	}
 
 	conf := asset.Config{
-		EtcdServers: []*url.URL{apiserver},
 		EtcdUseTLS:  true,
+		EtcdServers: etcdSrvs,
 		APIServers:  []*url.URL{apiserver},
 		AltNames: &tlsutil.AltNames{
 			DNSNames: []string{
 				"localhost",
+				fmt.Sprintf("*.%s.svc", cr.Namespace),
 				fmt.Sprintf("*.%s.svc.cluster.local", cr.Namespace),
 			},
 			IPs: []net.IP{
@@ -48,8 +55,8 @@ func prepareAssets(cr *api.Sporos) error {
 		},
 		PodCIDR:      podCIDR,
 		ServiceCIDR:  svcCIDR,
-		APIServiceIP: net.ParseIP(cr.Spec.ApiServerIP),
-		DNSServiceIP: net.ParseIP(cr.Spec.ApiServerIP),
+		APIServiceIP: net.ParseIP(cr.Status.ApiServerIP),
+		DNSServiceIP: net.ParseIP("10.1.1.10"),
 		Images:       asset.DefaultImages,
 	}
 	assets, err := asset.NewDefaultAssets(conf)
@@ -66,6 +73,23 @@ func prepareAssets(cr *api.Sporos) error {
 		return err
 	}
 	return nil
+}
+
+func etcdServers(cr *api.Sporos) ([]*url.URL, error) {
+	altNames := []string{
+		"https://localhost",
+		fmt.Sprintf("https://*.%s.svc", cr.Namespace),
+		fmt.Sprintf("https://*.%s.svc.cluster.local", cr.Namespace),
+	}
+	var urls []*url.URL
+	for _, addr := range altNames {
+		a, err := url.Parse(addr)
+		if err != nil {
+			return nil, err
+		}
+		urls = append(urls, a)
+	}
+	return urls, nil
 }
 
 func createEtcdTLSsecrets(cr *api.Sporos, a asset.Assets) error {
