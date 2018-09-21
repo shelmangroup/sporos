@@ -2,11 +2,9 @@ package sporos
 
 import (
 	"fmt"
-	"net"
 	"net/url"
 
 	api "github.com/shelmangroup/sporos/pkg/apis/sporos/v1alpha1"
-	"github.com/shelmangroup/sporos/pkg/tlsutil"
 	// log "github.com/sirupsen/logrus"
 
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
@@ -37,11 +35,11 @@ func prepareAssets(cr *api.Sporos) error {
 		return err
 	}
 
-	etcdServerName, err := url.Parse(etcdURLForSporos(cr.Name))
+	etcdUrl, err := url.Parse(etcdURLForSporos(cr.Name))
 	if err != nil {
 		return err
 	}
-	etcdServers := []string{"localhost", etcdServerName.Hostname()}
+	etcdServers := []string{"localhost", etcdUrl.Hostname()}
 	etcdAssets, err := newEtcdTLSAssets(nil, nil, nil, caCert, caKey, etcdServers)
 	if err != nil {
 		return err
@@ -51,11 +49,8 @@ func prepareAssets(cr *api.Sporos) error {
 		return err
 	}
 
-	altNames := tlsutil.AltNames{
-		IPs:      []net.IP{net.ParseIP(cr.Status.ApiServerIP)},
-		DNSNames: []string{"localhost"},
-	}
-	controlplaneAssets, err := newTLSAssets(caCert, caKey, altNames)
+	apiServers := []string{"localhost", cr.Status.ApiServerIP}
+	controlplaneAssets, err := newTLSAssets(caCert, caKey, apiServers)
 	if err != nil {
 		return err
 	}

@@ -10,7 +10,7 @@ import (
 	"github.com/shelmangroup/sporos/pkg/tlsutil"
 )
 
-func newTLSAssets(caCert *x509.Certificate, caPrivKey *rsa.PrivateKey, altNames tlsutil.AltNames) ([]Asset, error) {
+func newTLSAssets(caCert *x509.Certificate, caPrivKey *rsa.PrivateKey, altNames []string) ([]Asset, error) {
 	var (
 		assets []Asset
 		err    error
@@ -69,10 +69,18 @@ func newCACert() (*rsa.PrivateKey, *x509.Certificate, error) {
 	return key, cert, err
 }
 
-func newAPIKeyAndCert(caCert *x509.Certificate, caPrivKey *rsa.PrivateKey, altNames tlsutil.AltNames) (*rsa.PrivateKey, *x509.Certificate, error) {
+func newAPIKeyAndCert(caCert *x509.Certificate, caPrivKey *rsa.PrivateKey, addrs []string) (*rsa.PrivateKey, *x509.Certificate, error) {
 	key, err := tlsutil.NewPrivateKey()
 	if err != nil {
 		return nil, nil, err
+	}
+	var altNames tlsutil.AltNames
+	for _, addr := range addrs {
+		if ip := net.ParseIP(addr); ip != nil {
+			altNames.IPs = append(altNames.IPs, ip)
+		} else {
+			altNames.DNSNames = append(altNames.DNSNames, addr)
+		}
 	}
 	altNames.DNSNames = append(altNames.DNSNames, []string{
 		"kubernetes",
