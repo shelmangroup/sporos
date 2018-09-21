@@ -3,6 +3,7 @@ package sporos
 import (
 	"fmt"
 	"net"
+	"net/url"
 
 	api "github.com/shelmangroup/sporos/pkg/apis/sporos/v1alpha1"
 	"github.com/shelmangroup/sporos/pkg/tlsutil"
@@ -35,7 +36,12 @@ func prepareAssets(cr *api.Sporos) error {
 	if err != nil {
 		return err
 	}
-	etcdServers := []string{"localhost", fmt.Sprint("%s-etcd-client.%s.svc", cr.Name, cr.Namespace)}
+
+	etcdServerName, err := url.Parse(etcdURLForSporos(cr.Name))
+	if err != nil {
+		return err
+	}
+	etcdServers := []string{"localhost", etcdServerName.Hostname()}
 	etcdAssets, err := newEtcdTLSAssets(nil, nil, nil, caCert, caKey, etcdServers)
 	if err != nil {
 		return err
