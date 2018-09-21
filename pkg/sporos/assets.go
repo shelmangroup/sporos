@@ -3,100 +3,68 @@ package sporos
 import (
 	"fmt"
 	"net"
-	"net/url"
 
-	"github.com/kubernetes-incubator/bootkube/pkg/asset"
-	"github.com/kubernetes-incubator/bootkube/pkg/tlsutil"
 	api "github.com/shelmangroup/sporos/pkg/apis/sporos/v1alpha1"
+	"github.com/shelmangroup/sporos/pkg/tlsutil"
 	// log "github.com/sirupsen/logrus"
 
 	"github.com/operator-framework/operator-sdk/pkg/sdk"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	// "k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/kubernetes/scheme"
 )
 
+type Asset struct {
+	Name string
+	Data []byte
+}
+
+type Assets []Asset
+
+func (as Assets) Get(name string) (Asset, error) {
+	for _, asset := range as {
+		if asset.Name == name {
+			return asset, nil
+		}
+	}
+	return Asset{}, fmt.Errorf("asset %q does not exist", name)
+}
+
 func prepareAssets(cr *api.Sporos) error {
-	apiServerUrl := fmt.Sprintf("https://%s:9443", cr.Status.ApiServerIP)
-	apiserver, err := url.Parse(apiServerUrl)
+	caKey, caCert, err := newCACert()
+	if err != nil {
+		return err
+	}
+	etcdServers := []string{"localhost", fmt.Sprint("%s-etcd-client.%s.svc", cr.Name, cr.Namespace)}
+	etcdAssets, err := newEtcdTLSAssets(nil, nil, nil, caCert, caKey, etcdServers)
+	if err != nil {
+		return err
+	}
+	err = createEtcdTLSsecrets(cr, etcdAssets)
 	if err != nil {
 		return err
 	}
 
-	etcdSrvs, err := etcdServers(cr)
+	altNames := tlsutil.AltNames{
+		IPs:      []net.IP{net.ParseIP(cr.Status.ApiServerIP)},
+		DNSNames: []string{"localhost"},
+	}
+	controlplaneAssets, err := newTLSAssets(caCert, caKey, altNames)
 	if err != nil {
 		return err
 	}
-
-	_, podCIDR, err := net.ParseCIDR(cr.Spec.PodCIDR)
-	if err != nil {
-		return err
-	}
-	_, svcCIDR, err := net.ParseCIDR(cr.Spec.ServiceCIDR)
-	if err != nil {
-		return err
-	}
-
-	conf := asset.Config{
-		EtcdUseTLS:  true,
-		EtcdServers: etcdSrvs,
-		APIServers:  []*url.URL{apiserver},
-		AltNames: &tlsutil.AltNames{
-			DNSNames: []string{
-				"localhost",
-				fmt.Sprintf("*.%s.svc", cr.Namespace),
-				fmt.Sprintf("*.%s.svc.cluster.local", cr.Namespace),
-			},
-			IPs: []net.IP{
-				net.ParseIP("127.0.0.1"),
-			},
-		},
-		PodCIDR:      podCIDR,
-		ServiceCIDR:  svcCIDR,
-		APIServiceIP: net.ParseIP(cr.Status.ApiServerIP),
-		DNSServiceIP: net.ParseIP("10.1.1.10"),
-		Images:       asset.DefaultImages,
-	}
-	assets, err := asset.NewDefaultAssets(conf)
-	if err != nil {
-		return err
-	}
-
-	err = createEtcdTLSsecrets(cr, assets)
-	if err != nil {
-		return err
-	}
-	err = createControlplaneSecrets(cr, assets)
+	err = createControlplaneSecrets(cr, controlplaneAssets)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func etcdServers(cr *api.Sporos) ([]*url.URL, error) {
-	altNames := []string{
-		"https://localhost",
-		fmt.Sprintf("https://*.%s.svc", cr.Namespace),
-		fmt.Sprintf("https://*.%s.svc.cluster.local", cr.Namespace),
-	}
-	var urls []*url.URL
-	for _, addr := range altNames {
-		a, err := url.Parse(addr)
-		if err != nil {
-			return nil, err
-		}
-		urls = append(urls, a)
-	}
-	return urls, nil
-}
-
-func createEtcdTLSsecrets(cr *api.Sporos, a asset.Assets) error {
+func createEtcdTLSsecrets(cr *api.Sporos, a Assets) error {
 	//Create server cert secret
-	serverKey, _ := a.Get(asset.AssetPathEtcdServerKey)
-	serverCert, _ := a.Get(asset.AssetPathEtcdServerCert)
-	serverCa, _ := a.Get(asset.AssetPathEtcdServerCA)
+	serverKey, _ := a.Get("server.key")
+	serverCert, _ := a.Get("server.crt")
+	serverCa, _ := a.Get("server-ca.crt")
 	serverSecret := &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
@@ -120,9 +88,9 @@ func createEtcdTLSsecrets(cr *api.Sporos, a asset.Assets) error {
 	}
 
 	//Create client cert secret
-	clientKey, _ := a.Get(asset.AssetPathEtcdClientKey)
-	clientCert, _ := a.Get(asset.AssetPathEtcdClientCert)
-	clientCa, _ := a.Get(asset.AssetPathEtcdClientCA)
+	clientKey, _ := a.Get("etcd-client.key")
+	clientCert, _ := a.Get("etc-client.crt")
+	clientCa, _ := a.Get("etcd-client-ca.crt")
 	clientSecret := &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
@@ -146,9 +114,9 @@ func createEtcdTLSsecrets(cr *api.Sporos, a asset.Assets) error {
 	}
 
 	//Create peer cert secret
-	peerKey, _ := a.Get(asset.AssetPathEtcdPeerKey)
-	peerCert, _ := a.Get(asset.AssetPathEtcdPeerCert)
-	peerCa, _ := a.Get(asset.AssetPathEtcdPeerCA)
+	peerKey, _ := a.Get("peer.key")
+	peerCert, _ := a.Get("peer.crt")
+	peerCa, _ := a.Get("peer-ca.key")
 	peerSecret := &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
@@ -174,70 +142,33 @@ func createEtcdTLSsecrets(cr *api.Sporos, a asset.Assets) error {
 	return nil
 }
 
-func createControlplaneSecrets(cr *api.Sporos, a asset.Assets) error {
-	kubeApiserverSecret, _ := a.Get(asset.AssetPathAPIServerSecret)
-	apiSecret, err := decodeSecretManifest(kubeApiserverSecret.Data)
-	if err != nil {
-		return err
-	}
-	apiSecret.ObjectMeta.Namespace = cr.Namespace
-	apiSecret.ObjectMeta.Name = fmt.Sprintf("%s-kube-apiserver", cr.Name)
-	apiSecret.ObjectMeta.Labels = LabelsForSporos(cr.Name)
-
-	addOwnerRefToObject(apiSecret, asOwner(cr))
-	err = sdk.Create(apiSecret)
-	if err != nil && !apierrors.IsAlreadyExists(err) {
-		return err
-	}
-
-	kubeControllerSecret, _ := a.Get(asset.AssetPathControllerManagerSecret)
-	controllerSecret, err := decodeSecretManifest(kubeControllerSecret.Data)
-	if err != nil {
-		return err
-	}
-	controllerSecret.ObjectMeta.Namespace = cr.Namespace
-	controllerSecret.ObjectMeta.Name = fmt.Sprintf("%s-kube-controller-manager", cr.Name)
-	controllerSecret.ObjectMeta.Labels = LabelsForSporos(cr.Name)
-
-	addOwnerRefToObject(controllerSecret, asOwner(cr))
-	err = sdk.Create(controllerSecret)
-	if err != nil && !apierrors.IsAlreadyExists(err) {
-		return err
-	}
-	adminKubeconfig, _ := a.Get(asset.AssetPathAdminKubeConfig)
-	adminSecret := &corev1.Secret{
+func createControlplaneSecrets(cr *api.Sporos, a Assets) error {
+	//Create apiserver cert secret
+	caCert, _ := a.Get("ca.crt")
+	caKey, _ := a.Get("ca.key")
+	apiserverKey, _ := a.Get("apiserver.key")
+	apiserverCert, _ := a.Get("apiserver.crt")
+	apiserverSecret := &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Secret",
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-admin-kubeconfig", cr.Name),
+			Name:      fmt.Sprintf("%s-kube-apiserver", cr.Name),
 			Namespace: cr.Namespace,
 			Labels:    LabelsForSporos(cr.Name),
 		},
 		Data: map[string][]byte{
-			"kubeconfig": adminKubeconfig.Data,
+			"apiserver.key": apiserverKey.Data,
+			"apiserver.crt": apiserverCert.Data,
+			"ca.crt":        caCert.Data,
+			"ca.key":        caKey.Data,
 		},
 	}
-	addOwnerRefToObject(adminSecret, asOwner(cr))
-	err = sdk.Create(adminSecret)
+	addOwnerRefToObject(apiserverSecret, asOwner(cr))
+	err := sdk.Create(apiserverSecret)
 	if err != nil && !apierrors.IsAlreadyExists(err) {
 		return err
 	}
 	return nil
-}
-
-func decodeSecretManifest(b []byte) (*corev1.Secret, error) {
-	obj, _, err := scheme.Codecs.UniversalDeserializer().Decode(b, nil, nil)
-	if err != nil {
-		return nil, err
-	}
-	var s *corev1.Secret
-	switch o := obj.(type) {
-	case *corev1.Secret:
-		s = o
-	default:
-		return nil, fmt.Errorf("No secret")
-	}
-	return s, nil
 }

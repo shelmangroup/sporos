@@ -1,14 +1,13 @@
-package asset
+package sporos
 
 import (
 	"crypto/rsa"
 	"crypto/x509"
 	"net"
-	"net/url"
 
 	"github.com/pborman/uuid"
 
-	"github.com/kubernetes-incubator/bootkube/pkg/tlsutil"
+	"github.com/shelmangroup/sporos/pkg/tlsutil"
 )
 
 func newTLSAssets(caCert *x509.Certificate, caPrivKey *rsa.PrivateKey, altNames tlsutil.AltNames) ([]Asset, error) {
@@ -38,14 +37,14 @@ func newTLSAssets(caCert *x509.Certificate, caPrivKey *rsa.PrivateKey, altNames 
 	}
 
 	assets = append(assets, []Asset{
-		{Name: AssetPathCAKey, Data: tlsutil.EncodePrivateKeyPEM(caPrivKey)},
-		{Name: AssetPathCACert, Data: tlsutil.EncodeCertificatePEM(caCert)},
-		{Name: AssetPathAPIServerKey, Data: tlsutil.EncodePrivateKeyPEM(apiKey)},
-		{Name: AssetPathAPIServerCert, Data: tlsutil.EncodeCertificatePEM(apiCert)},
-		{Name: AssetPathServiceAccountPrivKey, Data: tlsutil.EncodePrivateKeyPEM(saPrivKey)},
-		{Name: AssetPathServiceAccountPubKey, Data: saPubKey},
-		{Name: AssetPathAdminKey, Data: tlsutil.EncodePrivateKeyPEM(adminKey)},
-		{Name: AssetPathAdminCert, Data: tlsutil.EncodeCertificatePEM(adminCert)},
+		{Name: "ca.key", Data: tlsutil.EncodePrivateKeyPEM(caPrivKey)},
+		{Name: "ca.crt", Data: tlsutil.EncodeCertificatePEM(caCert)},
+		{Name: "apiserver.key", Data: tlsutil.EncodePrivateKeyPEM(apiKey)},
+		{Name: "apiserver.crt", Data: tlsutil.EncodeCertificatePEM(apiCert)},
+		{Name: "service-account.key", Data: tlsutil.EncodePrivateKeyPEM(saPrivKey)},
+		{Name: "service-account.pub", Data: saPubKey},
+		{Name: "admin.key", Data: tlsutil.EncodePrivateKeyPEM(adminKey)},
+		{Name: "admin.crt", Data: tlsutil.EncodeCertificatePEM(adminCert)},
 	}...)
 	return assets, nil
 }
@@ -59,7 +58,7 @@ func newCACert() (*rsa.PrivateKey, *x509.Certificate, error) {
 	config := tlsutil.CertConfig{
 		CommonName:         "kube-ca",
 		Organization:       []string{uuid.New()},
-		OrganizationalUnit: []string{"bootkube"},
+		OrganizationalUnit: []string{"sporos"},
 	}
 
 	cert, err := tlsutil.NewSelfSignedCACertificate(config, key)
@@ -114,7 +113,7 @@ func newAdminKeyAndCert(caCert *x509.Certificate, caPrivKey *rsa.PrivateKey) (*r
 	return key, cert, err
 }
 
-func newEtcdTLSAssets(etcdCACert, etcdClientCert *x509.Certificate, etcdClientKey *rsa.PrivateKey, caCert *x509.Certificate, caPrivKey *rsa.PrivateKey, etcdServers []*url.URL) ([]Asset, error) {
+func newEtcdTLSAssets(etcdCACert, etcdClientCert *x509.Certificate, etcdClientKey *rsa.PrivateKey, caCert *x509.Certificate, caPrivKey *rsa.PrivateKey, etcdServers []string) ([]Asset, error) {
 	var assets []Asset
 	if etcdCACert == nil {
 		// Use the master CA to generate etcd assets.
@@ -122,46 +121,38 @@ func newEtcdTLSAssets(etcdCACert, etcdClientCert *x509.Certificate, etcdClientKe
 
 		// Create an etcd client cert.
 		var err error
-		etcdClientKey, etcdClientCert, err = newEtcdKeyAndCert(caCert, caPrivKey, "etcd-client", etcdServers)
+		etcdClientKey, etcdClientCert, err = newKeyAndCert(caCert, caPrivKey, "etcd-client", etcdServers)
 		if err != nil {
 			return nil, err
 		}
 
 		// Create an etcd peer cert (not consumed by self-hosted components).
-		etcdPeerKey, etcdPeerCert, err := newEtcdKeyAndCert(caCert, caPrivKey, "etcd-peer", etcdServers)
+		etcdPeerKey, etcdPeerCert, err := newKeyAndCert(caCert, caPrivKey, "etcd-peer", etcdServers)
 		if err != nil {
 			return nil, err
 		}
-		etcdServerKey, etcdServerCert, err := newEtcdKeyAndCert(caCert, caPrivKey, "etcd-server", etcdServers)
+		etcdServerKey, etcdServerCert, err := newKeyAndCert(caCert, caPrivKey, "etcd-server", etcdServers)
 		if err != nil {
 			return nil, err
 		}
 
 		assets = append(assets, []Asset{
-			{Name: AssetPathEtcdPeerCA, Data: tlsutil.EncodeCertificatePEM(etcdCACert)},
-			{Name: AssetPathEtcdPeerKey, Data: tlsutil.EncodePrivateKeyPEM(etcdPeerKey)},
-			{Name: AssetPathEtcdPeerCert, Data: tlsutil.EncodeCertificatePEM(etcdPeerCert)},
-			{Name: AssetPathEtcdServerCA, Data: tlsutil.EncodeCertificatePEM(etcdCACert)},
-			{Name: AssetPathEtcdServerKey, Data: tlsutil.EncodePrivateKeyPEM(etcdServerKey)},
-			{Name: AssetPathEtcdServerCert, Data: tlsutil.EncodeCertificatePEM(etcdServerCert)},
+			{Name: "peer-ca.crt", Data: tlsutil.EncodeCertificatePEM(etcdCACert)},
+			{Name: "peer.key", Data: tlsutil.EncodePrivateKeyPEM(etcdPeerKey)},
+			{Name: "peer.crt", Data: tlsutil.EncodeCertificatePEM(etcdPeerCert)},
+			{Name: "server-ca.crt", Data: tlsutil.EncodeCertificatePEM(etcdCACert)},
+			{Name: "server.key", Data: tlsutil.EncodePrivateKeyPEM(etcdServerKey)},
+			{Name: "server.crt", Data: tlsutil.EncodeCertificatePEM(etcdServerCert)},
 		}...)
 	}
 
 	assets = append(assets, []Asset{
-		{Name: AssetPathEtcdClientCA, Data: tlsutil.EncodeCertificatePEM(etcdCACert)},
-		{Name: AssetPathEtcdClientKey, Data: tlsutil.EncodePrivateKeyPEM(etcdClientKey)},
-		{Name: AssetPathEtcdClientCert, Data: tlsutil.EncodeCertificatePEM(etcdClientCert)},
+		{Name: "etcd-client-ca.crt", Data: tlsutil.EncodeCertificatePEM(etcdCACert)},
+		{Name: "etcd-client.key", Data: tlsutil.EncodePrivateKeyPEM(etcdClientKey)},
+		{Name: "etcd-client.crt", Data: tlsutil.EncodeCertificatePEM(etcdClientCert)},
 	}...)
 
 	return assets, nil
-}
-
-func newEtcdKeyAndCert(caCert *x509.Certificate, caPrivKey *rsa.PrivateKey, commonName string, etcdServers []*url.URL) (*rsa.PrivateKey, *x509.Certificate, error) {
-	addrs := make([]string, len(etcdServers))
-	for i := range etcdServers {
-		addrs[i] = etcdServers[i].Hostname()
-	}
-	return newKeyAndCert(caCert, caPrivKey, commonName, addrs)
 }
 
 func newKeyAndCert(caCert *x509.Certificate, caPrivKey *rsa.PrivateKey, commonName string, addrs []string) (*rsa.PrivateKey, *x509.Certificate, error) {

@@ -188,18 +188,6 @@
   version = "v1.1.5"
 
 [[projects]]
-  digest = "1:54e51626772439047e591c12c02196096d821ffad328a375f0c2e882f9f97336"
-  name = "github.com/kubernetes-incubator/bootkube"
-  packages = [
-    "pkg/asset",
-    "pkg/asset/internal",
-    "pkg/tlsutil",
-  ]
-  pruneopts = "NUT"
-  revision = "6618198f5e416cf60c10e77585ba4368e9438cd8"
-  version = "v0.13.0"
-
-[[projects]]
   branch = "master"
   digest = "1:84a5a2b67486d5d67060ac393aa255d05d24ed5ee41daecd5635ec22657b6492"
   name = "github.com/mailru/easyjson"
@@ -660,18 +648,16 @@
   analyzer-version = 1
   input-imports = [
     "github.com/coreos/etcd-operator/pkg/apis/etcd/v1beta2",
-    "github.com/kubernetes-incubator/bootkube/pkg/asset",
-    "github.com/kubernetes-incubator/bootkube/pkg/tlsutil",
     "github.com/operator-framework/operator-sdk/pkg/sdk",
     "github.com/operator-framework/operator-sdk/pkg/util/k8sutil",
     "github.com/operator-framework/operator-sdk/version",
+    "github.com/pborman/uuid",
     "github.com/sirupsen/logrus",
     "k8s.io/api/core/v1",
     "k8s.io/apimachinery/pkg/api/errors",
     "k8s.io/apimachinery/pkg/apis/meta/v1",
     "k8s.io/apimachinery/pkg/runtime",
     "k8s.io/apimachinery/pkg/runtime/schema",
-    "k8s.io/client-go/kubernetes/scheme",
     "k8s.io/client-go/plugin/pkg/client/auth/gcp",
     "k8s.io/code-generator/cmd/client-gen",
     "k8s.io/code-generator/cmd/conversion-gen",
