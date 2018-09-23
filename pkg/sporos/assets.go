@@ -92,7 +92,7 @@ func createEtcdTLSsecrets(cr *api.Sporos, a Assets) error {
 
 	//Create client cert secret
 	clientKey, _ := a.Get("etcd-client.key")
-	clientCert, _ := a.Get("etc-client.crt")
+	clientCert, _ := a.Get("etcd-client.crt")
 	clientCa, _ := a.Get("etcd-client-ca.crt")
 	clientSecret := &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
@@ -151,8 +151,8 @@ func createControlplaneSecrets(cr *api.Sporos, a Assets) error {
 	caKey, _ := a.Get("ca.key")
 	apiserverKey, _ := a.Get("apiserver.key")
 	apiserverCert, _ := a.Get("apiserver.crt")
-	etcdClientKey, _ := a.Get("etcd-client.crt")
-	etcdClientCert, _ := a.Get("etcd-client.key")
+	etcdClientCert, _ := a.Get("etcd-client.crt")
+	etcdClientKey, _ := a.Get("etcd-client.key")
 	etcdClientCa, _ := a.Get("etcd-client-ca.crt")
 	serviceAccountPub, _ := a.Get("service-account.pub")
 	apiserverSecret := &corev1.Secret{
