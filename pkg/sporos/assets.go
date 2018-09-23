@@ -185,10 +185,13 @@ func createControlplaneSecrets(cr *api.Sporos, a Assets) error {
 	adminKey, _ := a.Get("admin.key")
 	adminCert, _ := a.Get("admin.crt")
 	adminConfig := clientcmdapi.NewConfig()
+	adminConfig.Clusters["local"] = clientcmdapi.NewCluster()
 	adminConfig.Clusters["local"].Server = fmt.Sprintf("https://%s-kube-api-server.%s.svc", cr.Name, cr.Namespace)
 	adminConfig.Clusters["local"].CertificateAuthorityData = caCert.Data
+	adminConfig.AuthInfos["admin"] = clientcmdapi.NewAuthInfo()
 	adminConfig.AuthInfos["admin"].ClientCertificateData = adminCert.Data
 	adminConfig.AuthInfos["admin"].ClientKeyData = adminKey.Data
+	adminConfig.Contexts["context"] = clientcmdapi.NewContext()
 	adminConfig.Contexts["context"].AuthInfo = "admin"
 	adminConfig.Contexts["context"].Cluster = "local"
 	adminConfigData, err := clientcmd.Write(*adminConfig)
