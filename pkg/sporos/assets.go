@@ -219,8 +219,6 @@ func createControlplaneSecrets(cr *api.Sporos, a Assets) error {
 	}
 
 	//Create controller manager cert secret
-	caCert, _ := a.Get("ca.crt")
-	caKey, _ := a.Get("ca.key")
 	serviceAccountPrivKey, _ := a.Get("service-account.key")
 	controllerSecret := &corev1.Secret{
 		TypeMeta: metav1.TypeMeta{
@@ -240,7 +238,7 @@ func createControlplaneSecrets(cr *api.Sporos, a Assets) error {
 		},
 	}
 	addOwnerRefToObject(controllerSecret, asOwner(cr))
-	err := sdk.Create(controllerSecret)
+	err = sdk.Create(controllerSecret)
 	if err != nil && !apierrors.IsAlreadyExists(err) {
 		return err
 	}

@@ -34,8 +34,15 @@ type Sporos struct {
 }
 
 type SporosSpec struct {
+	Nodes       int32  `json:"nodes,omitempty"`
 	PodCIDR     string `json:"podCIDR"`
 	ServiceCIDR string `json:"serviceCIDR"`
+	// Base image to use for a k8s deployment.
+	BaseImage string `json:"baseImage"`
+
+	// Version of k8s to be deployed.
+	Version string `json:"version"`
+
 	// Pod defines the policy for pods owned by sporos operator.
 	// This field cannot be updated once the CR is created.
 	Pod *PodPolicy `json:"pod,omitempty"`
