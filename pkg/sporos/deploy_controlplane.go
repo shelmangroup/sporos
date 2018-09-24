@@ -63,8 +63,9 @@ func isServiceEndpointReady(cr *api.Sporos, s *corev1.Service) (bool, error) {
 
 func deployControlplane(cr *api.Sporos) error {
 	selector := LabelsForSporos(cr.GetName())
+	apiServerSecret := fmt.Sprintf("%s-kube-apiserver", cr.GetName())
 
-	podTempl := corev1.PodTemplateSpec{
+	apiPodTempl := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      cr.GetName(),
 			Namespace: cr.GetNamespace(),
@@ -79,7 +80,7 @@ func deployControlplane(cr *api.Sporos) error {
 						Sources: []corev1.VolumeProjection{{
 							Secret: &corev1.SecretProjection{
 								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "kube-apiserver-secrets",
+									Name: apiServerSecret,
 								},
 							},
 						}},
@@ -93,7 +94,7 @@ func deployControlplane(cr *api.Sporos) error {
 		},
 	}
 	if cr.Spec.Pod != nil {
-		applyPodPolicy(&podTempl.Spec, cr.Spec.Pod)
+		applyPodPolicy(&apiPodTempl.Spec, cr.Spec.Pod)
 	}
 
 	d := &appsv1.Deployment{
@@ -109,7 +110,7 @@ func deployControlplane(cr *api.Sporos) error {
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &cr.Spec.Nodes,
 			Selector: &metav1.LabelSelector{MatchLabels: selector},
-			Template: podTempl,
+			Template: apiPodTempl,
 			Strategy: appsv1.DeploymentStrategy{
 				Type: appsv1.RollingUpdateDeploymentStrategyType,
 				RollingUpdate: &appsv1.RollingUpdateDeployment{
