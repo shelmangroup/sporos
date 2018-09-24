@@ -169,7 +169,6 @@ func createControlplaneSecrets(cr *api.Sporos, a Assets) error {
 			"apiserver.key":       apiserverKey.Data,
 			"apiserver.crt":       apiserverCert.Data,
 			"ca.crt":              caCert.Data,
-			"ca.key":              caKey.Data,
 			"etcd-client.key":     etcdClientKey.Data,
 			"etcd-client.crt":     etcdClientCert.Data,
 			"etcd-client-ca.crt":  etcdClientCa.Data,
@@ -182,6 +181,7 @@ func createControlplaneSecrets(cr *api.Sporos, a Assets) error {
 		return err
 	}
 
+	// Cluster kubeconfig
 	adminKey, _ := a.Get("admin.key")
 	adminCert, _ := a.Get("admin.crt")
 	adminConfig := clientcmdapi.NewConfig()
@@ -204,7 +204,7 @@ func createControlplaneSecrets(cr *api.Sporos, a Assets) error {
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-admin-kubeconfig", cr.Name),
+			Name:      fmt.Sprintf("%s-kubeconfig", cr.Name),
 			Namespace: cr.Namespace,
 			Labels:    LabelsForSporos(cr.Name),
 		},
@@ -217,5 +217,33 @@ func createControlplaneSecrets(cr *api.Sporos, a Assets) error {
 	if err != nil && !apierrors.IsAlreadyExists(err) {
 		return err
 	}
+
+	//Create controller manager cert secret
+	caCert, _ := a.Get("ca.crt")
+	caKey, _ := a.Get("ca.key")
+	serviceAccountPrivKey, _ := a.Get("service-account.key")
+	controllerSecret := &corev1.Secret{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Secret",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-kube-controller-manager", cr.Name),
+			Namespace: cr.Namespace,
+			Labels:    LabelsForSporos(cr.Name),
+		},
+		Data: map[string][]byte{
+			"ca.crt":              caCert.Data,
+			"ca.key":              caKey.Data,
+			"service-account.key": serviceAccountPrivKey.Data,
+			"kubeconfig":          adminConfigData,
+		},
+	}
+	addOwnerRefToObject(controllerSecret, asOwner(cr))
+	err := sdk.Create(controllerSecret)
+	if err != nil && !apierrors.IsAlreadyExists(err) {
+		return err
+	}
+
 	return nil
 }
