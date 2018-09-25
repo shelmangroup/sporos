@@ -3,5 +3,8 @@ kind: "Sporos"
 metadata:
   name: "helloworld"
 spec:
-  podCIDR: "1.2.3.0/24"
-  serviceCIDR: "1.2.4.0/24"
+  nodes: 1
+  baseImage: gcr.io/google_containers/hyperkube
+  version: v1.11.2
+  podCIDR: "10.50.24.0/24"
+  serviceCIDR: "10.50.25.0/24"

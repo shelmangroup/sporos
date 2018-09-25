@@ -51,7 +51,7 @@ func prepareAssets(cr *api.Sporos) error {
 		return err
 	}
 
-	apiServers := []string{"localhost", fmt.Sprintf("%s-kube-api-server.%s.svc", cr.Name, cr.Namespace), cr.Status.ApiServerIP}
+	apiServers := []string{"localhost", fmt.Sprintf("%s-kube-apiserver.%s.svc", cr.Name, cr.Namespace), cr.Status.ApiServerIP}
 	controlplaneAssets, err := newTLSAssets(caCert, caKey, apiServers)
 	if err != nil {
 		return err
@@ -186,14 +186,15 @@ func createControlplaneSecrets(cr *api.Sporos, a Assets) error {
 	adminCert, _ := a.Get("admin.crt")
 	adminConfig := clientcmdapi.NewConfig()
 	adminConfig.Clusters["local"] = clientcmdapi.NewCluster()
-	adminConfig.Clusters["local"].Server = fmt.Sprintf("https://%s-kube-api-server.%s.svc", cr.Name, cr.Namespace)
+	adminConfig.Clusters["local"].Server = fmt.Sprintf("https://%s-kube-apiserver.%s.svc", cr.Name, cr.Namespace)
 	adminConfig.Clusters["local"].CertificateAuthorityData = caCert.Data
 	adminConfig.AuthInfos["admin"] = clientcmdapi.NewAuthInfo()
 	adminConfig.AuthInfos["admin"].ClientCertificateData = adminCert.Data
 	adminConfig.AuthInfos["admin"].ClientKeyData = adminKey.Data
-	adminConfig.Contexts["context"] = clientcmdapi.NewContext()
-	adminConfig.Contexts["context"].AuthInfo = "admin"
-	adminConfig.Contexts["context"].Cluster = "local"
+	adminConfig.Contexts["local"] = clientcmdapi.NewContext()
+	adminConfig.Contexts["local"].AuthInfo = "admin"
+	adminConfig.Contexts["local"].Cluster = "local"
+	adminConfig.CurrentContext = "local"
 	adminConfigData, err := clientcmd.Write(*adminConfig)
 	if err != nil {
 		return err

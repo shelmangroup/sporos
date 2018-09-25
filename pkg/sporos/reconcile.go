@@ -22,7 +22,7 @@ func Reconcile(cr *api.Sporos) (err error) {
 				return fmt.Errorf("failed to check if etcd cluster is ready: %v", err)
 			}
 			if !svcReady {
-				log.Infof("Waiting for External Endpoint (%v) to become ready", svc.Name)
+				log.Infof("Waiting for service (%v) to become ready", svc.Name)
 				return nil
 			}
 			err = prepareAssets(cr)
@@ -47,9 +47,12 @@ func Reconcile(cr *api.Sporos) (err error) {
 			log.Infof("Waiting for EtcdCluster (%v) to become ready", ec.Name)
 			return nil
 		}
+		err = deployControlplane(cr)
+		if err != nil {
+			return err
+		}
 		cr.Status.Phase = "Running"
 		sdk.Update(cr)
 	}
-
 	return nil
 }

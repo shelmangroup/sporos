@@ -15,7 +15,8 @@ import (
 )
 
 func createExternalEndpoint(cr *api.Sporos) (*corev1.Service, error) {
-	selector := LabelsForSporos(cr.Name)
+	apiServerSelector := fmt.Sprintf("%s-kube-apiserver", cr.GetName())
+	selector := LabelsForSporos(apiServerSelector)
 
 	svc := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
@@ -23,7 +24,7 @@ func createExternalEndpoint(cr *api.Sporos) (*corev1.Service, error) {
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-kube-api-server", cr.Name),
+			Name:      fmt.Sprintf("%s-kube-apiserver", cr.Name),
 			Namespace: cr.Namespace,
 			Labels:    selector,
 		},
@@ -62,17 +63,44 @@ func isServiceEndpointReady(cr *api.Sporos, s *corev1.Service) (bool, error) {
 }
 
 func deployControlplane(cr *api.Sporos) error {
-	selector := LabelsForSporos(cr.GetName())
 	apiServerSecret := fmt.Sprintf("%s-kube-apiserver", cr.GetName())
+	apiServerName := fmt.Sprintf("%s-kube-apiserver", cr.GetName())
+	log.Infof("Deploying kube-apiserver")
+	err := createDeployment(cr, apiServerName, apiServerSecret, apiserverContainer)
+	if err != nil {
+		return err
+	}
 
-	apiPodTempl := corev1.PodTemplateSpec{
+	controllerSecret := fmt.Sprintf("%s-kube-controller-manager", cr.GetName())
+	controllerName := fmt.Sprintf("%s-kube-controller-manager", cr.GetName())
+	log.Infof("Deploying kube-controller-manager")
+	err = createDeployment(cr, controllerName, controllerSecret, controllerContainer)
+	if err != nil {
+		return err
+	}
+
+	schedulerSecret := fmt.Sprintf("%s-kubeconfig", cr.GetName())
+	schedulerName := fmt.Sprintf("%s-kube-scheduler", cr.GetName())
+	log.Infof("Deploying kube-scheduler")
+	err = createDeployment(cr, schedulerName, schedulerSecret, schedulerContainer)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func createDeployment(cr *api.Sporos, name, secretName string, containerfn func(*api.Sporos) corev1.Container) error {
+	selector := LabelsForSporos(name)
+
+	podTempl := corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.GetName(),
+			Name:      name,
 			Namespace: cr.GetNamespace(),
 			Labels:    selector,
 		},
 		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{apiserverContainer(cr)},
+			Containers: []corev1.Container{containerfn(cr)},
 			Volumes: []corev1.Volume{{
 				Name: "secrets",
 				VolumeSource: corev1.VolumeSource{
@@ -80,21 +108,17 @@ func deployControlplane(cr *api.Sporos) error {
 						Sources: []corev1.VolumeProjection{{
 							Secret: &corev1.SecretProjection{
 								LocalObjectReference: corev1.LocalObjectReference{
-									Name: apiServerSecret,
+									Name: secretName,
 								},
 							},
 						}},
 					},
 				},
 			}},
-			SecurityContext: &corev1.PodSecurityContext{
-				RunAsUser:    func(i int64) *int64 { return &i }(65543),
-				RunAsNonRoot: func(b bool) *bool { return &b }(true),
-			},
 		},
 	}
 	if cr.Spec.Pod != nil {
-		applyPodPolicy(&apiPodTempl.Spec, cr.Spec.Pod)
+		applyPodPolicy(&podTempl.Spec, cr.Spec.Pod)
 	}
 
 	d := &appsv1.Deployment{
@@ -103,14 +127,14 @@ func deployControlplane(cr *api.Sporos) error {
 			APIVersion: "apps/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.GetName(),
+			Name:      name,
 			Namespace: cr.GetNamespace(),
 			Labels:    selector,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: &cr.Spec.Nodes,
 			Selector: &metav1.LabelSelector{MatchLabels: selector},
-			Template: apiPodTempl,
+			Template: podTempl,
 			Strategy: appsv1.DeploymentStrategy{
 				Type: appsv1.RollingUpdateDeploymentStrategyType,
 				RollingUpdate: &appsv1.RollingUpdateDeployment{
@@ -135,6 +159,27 @@ func apiserverContainer(cr *api.Sporos) corev1.Container {
 		Command: []string{
 			"/hyperkube",
 			"apiserver",
+			"--enable-admission-plugins=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultTolerationSeconds,DefaultStorageClass,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota,NodeRestriction",
+			"--advertise-address=" + cr.Status.ApiServerIP,
+			"--allow-privileged=true",
+			"--anonymous-auth=false",
+			"--authorization-mode=Node,RBAC",
+			"--bind-address=0.0.0.0",
+			"--client-ca-file=/etc/kubernetes/secrets/ca.crt",
+			"--enable-bootstrap-token-auth=true",
+			"--etcd-cafile=/etc/kubernetes/secrets/etcd-client-ca.crt",
+			"--etcd-certfile=/etc/kubernetes/secrets/etcd-client.crt",
+			"--etcd-keyfile=/etc/kubernetes/secrets/etcd-client.key",
+			"--etcd-servers=" + etcdURLForSporos(cr.Name),
+			"--insecure-port=0",
+			"--kubelet-client-certificate=/etc/kubernetes/secrets/apiserver.crt",
+			"--kubelet-client-key=/etc/kubernetes/secrets/apiserver.key",
+			"--secure-port=443",
+			"--service-account-key-file=/etc/kubernetes/secrets/service-account.pub",
+			"--service-cluster-ip-range=" + cr.Spec.PodCIDR,
+			"--storage-backend=etcd3",
+			"--tls-cert-file=/etc/kubernetes/secrets/apiserver.crt",
+			"--tls-private-key-file=/etc/kubernetes/secrets/apiserver.key",
 		},
 		VolumeMounts: []corev1.VolumeMount{{
 			Name:      "secrets",
@@ -144,50 +189,55 @@ func apiserverContainer(cr *api.Sporos) corev1.Container {
 			Name:          "https",
 			ContainerPort: int32(443),
 		}},
-		ReadinessProbe: &corev1.Probe{
-			Handler: corev1.Handler{
-				HTTPGet: &corev1.HTTPGetAction{
-					Path:   "/v1/health",
-					Port:   intstr.FromInt(443),
-					Scheme: corev1.URISchemeHTTPS,
-				},
-			},
-			InitialDelaySeconds: 10,
-			TimeoutSeconds:      10,
-			PeriodSeconds:       10,
-			FailureThreshold:    3,
-		},
+		// ReadinessProbe: &corev1.Probe{
+		// 	Handler: corev1.Handler{
+		// 		HTTPGet: &corev1.HTTPGetAction{
+		// 			Path:   "/healthz",
+		// 			Port:   intstr.FromInt(443),
+		// 			Scheme: corev1.URISchemeHTTPS,
+		// 		},
+		// 	},
+		// 	InitialDelaySeconds: 10,
+		// 	TimeoutSeconds:      10,
+		// 	PeriodSeconds:       10,
+		// 	FailureThreshold:    3,
+		// },
 	}
 }
 func controllerContainer(cr *api.Sporos) corev1.Container {
 	return corev1.Container{
-		Name:  "kube-apiserver",
+		Name:  "kube-controller-manager",
 		Image: fmt.Sprintf("%s:%s", cr.Spec.BaseImage, cr.Spec.Version),
 		Command: []string{
 			"/hyperkube",
 			"controller-manager",
+			"--use-service-account-credentials",
+			"--allocate-node-cidrs=true",
+			"--cluster-cidr=" + cr.Spec.PodCIDR,
+			"--service-cluster-ip-range=" + cr.Spec.ServiceCIDR,
+			"--kubeconfig=/etc/kubernetes/secrets/kubeconfig",
+			"--cluster-signing-cert-file=/etc/kubernetes/secrets/ca.crt",
+			"--cluster-signing-key-file=/etc/kubernetes/secrets/ca.key",
+			"--configure-cloud-routes=false",
+			"--leader-elect=true",
+			"--root-ca-file=/etc/kubernetes/secrets/ca.crt",
+			"--service-account-private-key-file=/etc/kubernetes/secrets/service-account.key",
 		},
 		VolumeMounts: []corev1.VolumeMount{{
 			Name:      "secrets",
 			MountPath: "/etc/kubernetes/secrets",
 		}},
-		Ports: []corev1.ContainerPort{{
-			Name:          "https",
-			ContainerPort: int32(443),
-		}},
-		ReadinessProbe: &corev1.Probe{
-			Handler: corev1.Handler{
-				HTTPGet: &corev1.HTTPGetAction{
-					Path:   "/v1/health",
-					Port:   intstr.FromInt(443),
-					Scheme: corev1.URISchemeHTTPS,
-				},
-			},
-			InitialDelaySeconds: 10,
-			TimeoutSeconds:      10,
-			PeriodSeconds:       10,
-			FailureThreshold:    3,
-		},
+		// LivenessProbe: &corev1.Probe{
+		// 	Handler: corev1.Handler{
+		// 		HTTPGet: &corev1.HTTPGetAction{
+		// 			Path:   "/healthz",
+		// 			Port:   intstr.FromInt(10252),
+		// 			Scheme: corev1.URISchemeHTTPS,
+		// 		},
+		// 	},
+		// 	InitialDelaySeconds: 15,
+		// 	TimeoutSeconds:      15,
+		// },
 	}
 }
 
@@ -198,28 +248,24 @@ func schedulerContainer(cr *api.Sporos) corev1.Container {
 		Command: []string{
 			"/hyperkube",
 			"scheduler",
+			"--kubeconfig=/etc/kubernetes/secrets/kubeconfig",
+			"--leader-elect=true",
 		},
 		VolumeMounts: []corev1.VolumeMount{{
 			Name:      "secrets",
 			MountPath: "/etc/kubernetes/secrets",
 		}},
-		Ports: []corev1.ContainerPort{{
-			Name:          "https",
-			ContainerPort: int32(443),
-		}},
-		ReadinessProbe: &corev1.Probe{
-			Handler: corev1.Handler{
-				HTTPGet: &corev1.HTTPGetAction{
-					Path:   "/v1/health",
-					Port:   intstr.FromInt(443),
-					Scheme: corev1.URISchemeHTTPS,
-				},
-			},
-			InitialDelaySeconds: 10,
-			TimeoutSeconds:      10,
-			PeriodSeconds:       10,
-			FailureThreshold:    3,
-		},
+		// LivenessProbe: &corev1.Probe{
+		// 	Handler: corev1.Handler{
+		// 		HTTPGet: &corev1.HTTPGetAction{
+		// 			Path:   "/healthz",
+		// 			Port:   intstr.FromInt(10251),
+		// 			Scheme: corev1.URISchemeHTTPS,
+		// 		},
+		// 	},
+		// 	InitialDelaySeconds: 15,
+		// 	TimeoutSeconds:      15,
+		// },
 	}
 }
 
