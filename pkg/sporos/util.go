@@ -1,10 +1,28 @@
 package sporos
 
 import (
-	api "github.com/shelmangroup/sporos/pkg/apis/sporos/v1alpha1"
+	"crypto/rand"
 
+	api "github.com/shelmangroup/sporos/pkg/apis/sporos/v1alpha1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+const validBootstrapTokenChars = "0123456789abcdefghijklmnopqrstuvwxyz"
+
+// newBootstrapToken constructs a bootstrap token in conformance with the following format:
+// https://kubernetes.io/docs/admin/bootstrap-tokens/#token-format
+func newBootstrapToken() (id string, secret string, err error) {
+	// Read 6 random bytes for the id and 16 random bytes for the token (see spec for details).
+	token := make([]byte, 6+16)
+	if _, err := rand.Read(token); err != nil {
+		return "", "", err
+	}
+
+	for i, b := range token {
+		token[i] = validBootstrapTokenChars[int(b)%len(validBootstrapTokenChars)]
+	}
+	return string(token[:6]), string(token[6:]), nil
+}
 
 // addOwnerRefToObject appends the desired OwnerReference to the object
 func addOwnerRefToObject(o metav1.Object, r metav1.OwnerReference) {

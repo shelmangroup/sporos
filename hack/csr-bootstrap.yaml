@@ -1,0 +1,52 @@
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: system-bootstrap-node-bootstrapper
+subjects:
+- kind: Group
+  name: system:bootstrappers
+  apiGroup: rbac.authorization.k8s.io
+- kind: Group
+  name: system:nodes
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: system:node-bootstrapper
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: system-bootstrap-approve-node-client-csr
+subjects:
+- kind: Group
+  name: system:bootstrappers
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: system:certificates.k8s.io:certificatesigningrequests:nodeclient
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: system-bootstrap-node-renewal
+subjects:
+- kind: Group
+  name: system:nodes
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: system:certificates.k8s.io:certificatesigningrequests:selfnodeclient
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: bootstrap-token-abcdef
+  namespace: kube-system
+type: bootstrap.kubernetes.io/token
+stringData:
+  token-id: "abcdef"
+  token-secret: "0123456789abcdef"
+  usage-bootstrap-authentication: "true"

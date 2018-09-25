@@ -176,7 +176,7 @@ func apiserverContainer(cr *api.Sporos) corev1.Container {
 			"--kubelet-client-key=/etc/kubernetes/secrets/apiserver.key",
 			"--secure-port=443",
 			"--service-account-key-file=/etc/kubernetes/secrets/service-account.pub",
-			"--service-cluster-ip-range=" + cr.Spec.PodCIDR,
+			"--service-cluster-ip-range=" + cr.Spec.ServiceCIDR,
 			"--storage-backend=etcd3",
 			"--tls-cert-file=/etc/kubernetes/secrets/apiserver.crt",
 			"--tls-private-key-file=/etc/kubernetes/secrets/apiserver.key",
