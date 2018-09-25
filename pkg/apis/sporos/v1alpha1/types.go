@@ -34,7 +34,6 @@ type Sporos struct {
 }
 
 type SporosSpec struct {
-	Nodes       int32  `json:"nodes,omitempty"`
 	PodCIDR     string `json:"podCIDR"`
 	ServiceCIDR string `json:"serviceCIDR"`
 	// Base image to use for a k8s deployment.

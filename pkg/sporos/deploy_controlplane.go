@@ -121,6 +121,9 @@ func createDeployment(cr *api.Sporos, name, secretName string, containerfn func(
 		applyPodPolicy(&podTempl.Spec, cr.Spec.Pod)
 	}
 
+	var replicas int32
+	replicas = 1
+
 	d := &appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Deployment",
@@ -132,7 +135,7 @@ func createDeployment(cr *api.Sporos, name, secretName string, containerfn func(
 			Labels:    selector,
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: &cr.Spec.Nodes,
+			Replicas: &replicas,
 			Selector: &metav1.LabelSelector{MatchLabels: selector},
 			Template: podTempl,
 			Strategy: appsv1.DeploymentStrategy{
