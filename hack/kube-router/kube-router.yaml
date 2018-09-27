@@ -73,10 +73,17 @@ spec:
             TMP=/etc/cni/net.d/.tmp-kuberouter-cfg;
             cp /etc/kube-router/cni-conf.json ${TMP};
             mv ${TMP} /etc/cni/net.d/10-kuberouter.conf;
+          fi;
+          if [ ! -f /opt/cni/bin/bridge ]; then
+            URL=https://github.com/containernetworking/plugins/releases/download/v0.6.0/cni-plugins-amd64-v0.6.0.tgz;
+            wget ${URL} -O cni-plugins.tgz;
+            tar zxf cni-plugins.tgz -C /opt/cni/bin;
           fi
         volumeMounts:
         - name: cni-conf-dir
           mountPath: /etc/cni/net.d
+        - name: cni-bin-dir
+          mountPath: /opt/cni/bin
         - name: kube-router-cfg
           mountPath: /etc/kube-router
       hostNetwork: true
@@ -90,6 +97,9 @@ spec:
       - name: lib-modules
         hostPath:
           path: /lib/modules
+      - name: cni-bin-dir
+        hostPath:
+          path: /opt/cni/bin
       - name: cni-conf-dir
         hostPath:
           path: /etc/kubernetes/cni/net.d
