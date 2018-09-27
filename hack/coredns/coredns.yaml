@@ -51,7 +51,7 @@ data:
         errors
         health
         log
-        kubernetes cluster.local {{ .ServiceCIDR }} {
+        kubernetes cluster.local 10.50.25.0/24 {
             pods insecure
             upstream
             fallthrough in-addr.arpa ip6.arpa
