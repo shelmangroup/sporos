@@ -2,6 +2,7 @@ package sporos
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 
 	api "github.com/shelmangroup/sporos/pkg/apis/sporos/v1alpha1"
@@ -51,7 +52,13 @@ func prepareAssets(cr *api.Sporos) error {
 		return err
 	}
 
-	apiServers := []string{"localhost", fmt.Sprintf("%s-kube-apiserver.%s.svc", cr.Name, cr.Namespace), cr.Status.ApiServerIP}
+	ip, _, err := net.ParseCIDR(cr.Spec.ServiceCIDR)
+	if err != nil {
+		return err
+	}
+	ip = ip.To4()
+	ip[3]++
+	apiServers := []string{"localhost", ip.String(), fmt.Sprintf("%s-kube-apiserver.%s.svc", cr.Name, cr.Namespace), cr.Status.ApiServerIP}
 	controlplaneAssets, err := newTLSAssets(caCert, caKey, apiServers)
 	if err != nil {
 		return err
