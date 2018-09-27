@@ -58,9 +58,5 @@ required = [
   # version = "=v0.0.6"
 
 [[constraint]]
-  name = "github.com/kubernetes-incubator/bootkube"
-  version = "0.13.0"
-
-[[constraint]]
   name = "github.com/coreos/etcd-operator"
   version = "0.9.2"
