@@ -215,7 +215,6 @@ func controllerContainer(cr *api.Sporos) corev1.Container {
 			"/hyperkube",
 			"controller-manager",
 			"--use-service-account-credentials",
-			"--allocate-node-cidrs=true",
 			"--cluster-cidr=" + cr.Spec.PodCIDR,
 			"--service-cluster-ip-range=" + cr.Spec.ServiceCIDR,
 			"--kubeconfig=/etc/kubernetes/secrets/kubeconfig",
