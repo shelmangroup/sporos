@@ -62,35 +62,38 @@ func isServiceEndpointReady(cr *api.Sporos, s *corev1.Service) (bool, error) {
 	return true, nil
 }
 
-func deployControlplane(cr *api.Sporos) error {
+func deployControlplane(cr *api.Sporos) ([]*appsv1.Deployment, error) {
+	var deployments []*appsv1.Deployment
+
 	apiServerSecret := fmt.Sprintf("%s-kube-apiserver", cr.GetName())
 	apiServerName := fmt.Sprintf("%s-kube-apiserver", cr.GetName())
-	log.Infof("Deploying kube-apiserver")
-	err := createDeployment(cr, apiServerName, apiServerSecret, apiserverContainer)
+	log.Debugf("Deploying kube-apiserver")
+	api, err := createDeployment(cr, apiServerName, apiServerSecret, apiserverContainer)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	controllerSecret := fmt.Sprintf("%s-kube-controller-manager", cr.GetName())
 	controllerName := fmt.Sprintf("%s-kube-controller-manager", cr.GetName())
-	log.Infof("Deploying kube-controller-manager")
-	err = createDeployment(cr, controllerName, controllerSecret, controllerContainer)
+	log.Debugf("Deploying kube-controller-manager")
+	control, err := createDeployment(cr, controllerName, controllerSecret, controllerContainer)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	schedulerSecret := fmt.Sprintf("%s-kubeconfig", cr.GetName())
 	schedulerName := fmt.Sprintf("%s-kube-scheduler", cr.GetName())
-	log.Infof("Deploying kube-scheduler")
-	err = createDeployment(cr, schedulerName, schedulerSecret, schedulerContainer)
+	log.Debugf("Deploying kube-scheduler")
+	scheduler, err := createDeployment(cr, schedulerName, schedulerSecret, schedulerContainer)
 	if err != nil {
-		return err
+		return nil, err
 	}
+	deployments = append(deployments, api, control, scheduler)
 
-	return nil
+	return deployments, nil
 }
 
-func createDeployment(cr *api.Sporos, name, secretName string, containerfn func(*api.Sporos) corev1.Container) error {
+func createDeployment(cr *api.Sporos, name, secretName string, containerfn func(*api.Sporos) corev1.Container) (*appsv1.Deployment, error) {
 	selector := LabelsForSporos(name)
 
 	podTempl := corev1.PodTemplateSpec{
@@ -150,9 +153,9 @@ func createDeployment(cr *api.Sporos, name, secretName string, containerfn func(
 	addOwnerRefToObject(d, asOwner(cr))
 	err := sdk.Create(d)
 	if err != nil && !apierrors.IsAlreadyExists(err) {
-		return err
+		return nil, err
 	}
-	return nil
+	return d, nil
 }
 
 func apiserverContainer(cr *api.Sporos) corev1.Container {
@@ -283,13 +286,17 @@ func applyPodPolicy(s *corev1.PodSpec, p *api.PodPolicy) {
 	}
 }
 
-// IsPodReady checks the status of the
+// IsControlplaneReady checks the status of the
 // pod for the Ready condition
-func IsPodReady(p corev1.Pod) bool {
-	for _, c := range p.Status.Conditions {
-		if c.Type == corev1.PodReady {
-			return c.Status == corev1.ConditionTrue
+func IsControlplaneReady(d *appsv1.Deployment) (bool, error) {
+	err := sdk.Get(d)
+	if err != nil {
+		return false, err
+	}
+	for _, c := range d.Status.Conditions {
+		if c.Type == appsv1.DeploymentProgressing {
+			return c.Status == corev1.ConditionTrue, nil
 		}
 	}
-	return false
+	return false, nil
 }

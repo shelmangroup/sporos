@@ -47,10 +47,23 @@ func Reconcile(cr *api.Sporos) (err error) {
 			log.Infof("Waiting for EtcdCluster (%v) to become ready", ec.Name)
 			return nil
 		}
-		err = deployControlplane(cr)
+
+		deploys, err := deployControlplane(cr)
 		if err != nil {
 			return err
 		}
+		for _, d := range deploys {
+			ready, err := IsControlplaneReady(d)
+			if err != nil {
+				return fmt.Errorf("failed to check if %v cluster is ready: %v", d.GetName(), err)
+			}
+			if !ready {
+				log.Infof("Waiting for controlplane (%v) to become ready", d.GetName())
+				return nil
+			}
+		}
+
+		log.Infof("%v is ready!", cr.Name)
 		cr.Status.Phase = "Running"
 		sdk.Update(cr)
 	}
