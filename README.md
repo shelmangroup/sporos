@@ -12,10 +12,10 @@ $ kubectl create -n sporos -f deploy/operator.yaml
 ## Create new control plane
 create a custom resource like so:
 ```yaml
-apiVersion: "sporos.shelman.io/v1alpha1"
-kind: "Sporos"
+apiVersion: sporos.shelman.io/v1alpha1
+kind: Sporos
 metadata:
-  name: "helloworld"
+  name: helloworld
 spec:
   baseImage: k8s.gcr.io/hyperkube
   version: v1.11.3
