@@ -59,7 +59,7 @@ time="2018-10-02T08:55:42Z" level=info msg="helloworld is ready!"
 Get admin kubeconfig
 ```
 $ export API_ENDPOINT=35.123.22.211
-$ kubectl get secrets -n sporos helloworld-kubeconfig -o json | jq -r '.data.kubeconfig' | base64 -d | sed -i s#helloworld-kube-apiserver.sporos.svc#${API_ENDPOINT}# > kubecfg
+$ kubectl get secrets -n sporos helloworld-kubeconfig -o json | jq -r '.data.kubeconfig' | base64 -d | sed s#helloworld-kube-apiserver.sporos.svc#${API_ENDPOINT}# > kubecfg
 ```
 
 Try it out.
