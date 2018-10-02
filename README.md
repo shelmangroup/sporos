@@ -30,7 +30,7 @@ $ kubectl create -n sporos -f cr.yaml
 
 watch logs for creation progress
 ```
-$ kubectl logs -n infra sporos-867b6fb498-26ssr -f
+$ kubectl logs -n sporos sporos-867b6fb498-26ssr -f
 
 time="2018-10-02T08:53:47Z" level=info msg="Go Version: go1.11"
 time="2018-10-02T08:53:47Z" level=info msg="Go OS/Arch: linux/amd64"
