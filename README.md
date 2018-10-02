@@ -2,10 +2,11 @@
 
 ## Installation
 ```
-$ helm install --namespace <ns> -n sporos-etcd-operator stable/etcd-operator
-$ kubectl create -n <ns> -f deploy/crd.yaml
-$ kubectl create -n <ns> -f deploy/rbac.yaml
-$ kubectl create -n <ns> -f deploy/operator.yaml
+$ kubectl create ns sporos
+$ helm install --namespace sporos -n sporos-etcd-operator stable/etcd-operator
+$ kubectl create -n sporos -f deploy/crd.yaml
+$ kubectl create -n sporos -f deploy/rbac.yaml
+$ kubectl create -n sporos -f deploy/operator.yaml
 ```
 
 ## Create new control plane
@@ -24,5 +25,5 @@ spec:
 
 Create the new control plane:
 ```
-$ kubectl create -n <ns> -f cr.yaml
+$ kubectl create -n sporos -f cr.yaml
 ```
