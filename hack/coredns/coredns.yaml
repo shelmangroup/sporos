@@ -51,7 +51,7 @@ data:
         errors
         health
         log
-        kubernetes cluster.local 10.50.25.0/24 {
+        kubernetes cluster.local 10.32.0.0/24 {
             pods insecure
             upstream
             fallthrough in-addr.arpa ip6.arpa
@@ -160,7 +160,7 @@ metadata:
 spec:
   selector:
     k8s-app: coredns
-  clusterIP: 10.50.25.10
+  clusterIP: 10.32.0.10
   ports:
     - name: dns
       port: 53

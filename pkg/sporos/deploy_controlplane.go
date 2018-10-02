@@ -216,6 +216,7 @@ func controllerContainer(cr *api.Sporos) corev1.Container {
 			"controller-manager",
 			"--use-service-account-credentials",
 			"--cluster-cidr=" + cr.Spec.PodCIDR,
+			"--allocate-node-cidrs=true",
 			"--service-cluster-ip-range=" + cr.Spec.ServiceCIDR,
 			"--kubeconfig=/etc/kubernetes/secrets/kubeconfig",
 			"--cluster-signing-cert-file=/etc/kubernetes/secrets/ca.crt",
@@ -224,6 +225,7 @@ func controllerContainer(cr *api.Sporos) corev1.Container {
 			"--leader-elect=true",
 			"--root-ca-file=/etc/kubernetes/secrets/ca.crt",
 			"--service-account-private-key-file=/etc/kubernetes/secrets/service-account.key",
+			"--use-service-account-credentials=true",
 		},
 		VolumeMounts: []corev1.VolumeMount{{
 			Name:      "secrets",
