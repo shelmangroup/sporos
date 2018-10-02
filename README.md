@@ -36,7 +36,7 @@ time="2018-10-02T08:53:47Z" level=info msg="Go Version: go1.11"
 time="2018-10-02T08:53:47Z" level=info msg="Go OS/Arch: linux/amd64"
 time="2018-10-02T08:53:47Z" level=info msg="operator-sdk Version: 0.0.6+git"
 time="2018-10-02T08:53:47Z" level=info msg="Metrics service sporos created"
-time="2018-10-02T08:53:47Z" level=info msg="Watching sporos.shelman.io/v1alpha1, Sporos, infra, 5000000000"
+time="2018-10-02T08:53:47Z" level=info msg="Watching sporos.shelman.io/v1alpha1, Sporos, sporos, 5000000000"
 time="2018-10-02T08:54:36Z" level=info msg="Waiting for service (helloworld-kube-apiserver) to become ready"
 time="2018-10-02T08:54:37Z" level=info msg="Waiting for service (helloworld-kube-apiserver) to become ready"
 time="2018-10-02T08:54:42Z" level=info msg="Waiting for service (helloworld-kube-apiserver) to become ready"
@@ -59,7 +59,7 @@ time="2018-10-02T08:55:42Z" level=info msg="helloworld is ready!"
 Get admin kubeconfig
 ```
 $ export API_ENDPOINT=35.123.22.211
-$ kubectl get secrets -n sporos helloworld-kubeconfig -o json | jq -r '.data.kubeconfig' | base64 -d | sed -i s#helloworld-kube-apiserver.infra.svc#${API_ENDPOINT}# > kubecfg
+$ kubectl get secrets -n sporos helloworld-kubeconfig -o json | jq -r '.data.kubeconfig' | base64 -d | sed -i s#helloworld-kube-apiserver.sporos.svc#${API_ENDPOINT}# > kubecfg
 ```
 
 Try it out.
