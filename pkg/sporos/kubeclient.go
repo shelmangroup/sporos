@@ -59,6 +59,6 @@ func decodeKubeConfigManifest(b []byte) (*clientcmdapi.Config, error) {
 	case *clientcmdapi.Config:
 		return o, nil
 	default:
-		return nil, fmt.Errorf("Config not a clientcmdapi.Config type")
+		return nil, fmt.Errorf("Object not of type api.Config")
 	}
 }
