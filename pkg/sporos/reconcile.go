@@ -67,5 +67,11 @@ func Reconcile(cr *api.Sporos) (err error) {
 		cr.Status.Phase = "Running"
 		sdk.Update(cr)
 	}
+
+	_, err = NewKubeClient(cr)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
