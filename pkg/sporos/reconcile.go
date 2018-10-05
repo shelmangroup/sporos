@@ -63,14 +63,19 @@ func Reconcile(cr *api.Sporos) (err error) {
 			}
 		}
 
+		client, err := NewKubeClient(cr)
+		if err != nil {
+			return err
+		}
+
+		err = csrBootstrap(client)
+		if err != nil {
+			return err
+		}
+
 		log.Infof("%v is ready!", cr.Name)
 		cr.Status.Phase = "Running"
 		sdk.Update(cr)
-	}
-
-	_, err = NewKubeClient(cr)
-	if err != nil {
-		return err
 	}
 
 	return nil
