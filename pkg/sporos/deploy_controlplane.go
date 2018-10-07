@@ -218,6 +218,7 @@ func controllerContainer(cr *api.Sporos) corev1.Container {
 			"/hyperkube",
 			"controller-manager",
 			"--use-service-account-credentials",
+			"--authentication-skip-lookup",
 			"--cluster-cidr=" + cr.Spec.PodCIDR,
 			"--allocate-node-cidrs=true",
 			"--service-cluster-ip-range=" + cr.Spec.ServiceCIDR,
