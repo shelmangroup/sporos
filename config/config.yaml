@@ -1,3 +1,0 @@
-apiVersion: sporos.shelman.io/v1alpha1
-kind: Sporos
-projectName: sporos

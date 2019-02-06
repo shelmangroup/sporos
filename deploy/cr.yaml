@@ -1,9 +1,0 @@
-apiVersion: sporos.shelman.io/v1alpha1
-kind: Sporos
-metadata:
-  name: helloworld
-spec:
-  baseImage: k8s.gcr.io/hyperkube
-  version: v1.12.1
-  podCIDR: "10.200.0.0/16"
-  serviceCIDR: "10.32.0.0/24"
